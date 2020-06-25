@@ -4,8 +4,15 @@ import torch.nn.functional as functional
 import math
 from torch.autograd import Variable
 
-#from init import *
 from random import random    
+
+'''
+
+Notes:
+    Lines to modify when altering between In-ResNet and \lambda-In-ResNet:
+        #263, #301, #334 
+        
+'''        
 
 class BasicBlock(nn.Module):
     expansion = 1
@@ -253,7 +260,7 @@ class InResNet(nn.Module):
         self.relu=nn.ReLU(inplace=True)
         self.pretrain=pretrain
         self.ks=nn.ParameterList([nn.Parameter(torch.Tensor(1).uniform_(0.75, 0.8))for i in range(layers[0]+layers[1]+layers[2])])
-#        self.ks=nn.ParameterList([nn.Parameter(torch.Tensor(1).uniform_(0.2, 0.25))for i in range(layers[0]+layers[1]+layers[2])]) # Use this line for \lambda-In-ResNet
+#        self.ks=nn.ParameterList([nn.Parameter(torch.Tensor(1).uniform_(0.2, 0.25))for i in range(layers[0]+layers[1]+layers[2])]) # Use this line for \lambda-In-ResNet; for 164-layer experiments, use [0.8, 0.9] for In-ResNet or [0.1, 0.2] for \lambda-In-ResNet
         self.stochastic_depth=stochastic_depth
         blocks=[]
         n=layers[0]+layers[1]+layers[2]

@@ -5,6 +5,11 @@ import numpy as np
 import sys
 
 '''
+
+Notes:
+    Lines to modify when altering between CIFAR10 and CIFAR100 training:
+        #25, #189, #387, #391, #393
+
 Acknowledgement:
 
 Plenty of lines reused from the codes of Lu et al., Beyond Finite Layer Neural Network: Bridging Deep Architects and Numerical Differential Equations, ICML 2018. Many thanks!
@@ -91,7 +96,7 @@ def train_epoch(net,optimizer,trainloader,testloader,it,control_dict,global_outp
 
 
     def train(data, info):
-        net.train()#turn to train mode
+        net.train() #turn to train mode
         inputs, labels = data
         inputs, labels = Variable(inputs), Variable(labels)
         if global_cuda_available:
@@ -105,7 +110,7 @@ def train_epoch(net,optimizer,trainloader,testloader,it,control_dict,global_outp
         info[1] = labels.size()[0]
 
     def test(info):
-        net.eval()# trun to eval mode
+        net.eval() #turn to eval mode
         correct_sum = 0
         total_loss_sum = 0.
         total_ctr = 0
@@ -146,7 +151,6 @@ def train_epoch(net,optimizer,trainloader,testloader,it,control_dict,global_outp
                                  )
             running_loss_sum = 0.0
             ctr_sum = 0
-        # it = it + 1
     write_file_and_close(global_output_filename,
                          "Epoch {:d} finished, average loss: {:.10f}"
                          .format(it, total_loss_sum / total_ctr)
@@ -155,8 +159,6 @@ def train_epoch(net,optimizer,trainloader,testloader,it,control_dict,global_outp
         write_file_and_close(global_output_filename, "Starting testing")
         info = [0., 0., 0.]
         test(info)
-#        print(type(info[0]), type(info[1]), type(info[2]))
-#        print(info[0], info[1], info[2])
         write_file_and_close(global_output_filename, net.print_ks())
         write_file_and_close(global_output_filename,
                              "Correct: {:d}, total: {:d}, "
@@ -184,7 +186,7 @@ class NN_SGDTrainer(object):
     def train(self,model_name="test"):
         self.iter_time += 1
         acc, parastr = train_epoch(self.net,self.optimizer,self.trainloader,self.testloader,self.iter_time,self.lr_adjust,self.output)
-        if acc > self.max:
+        if self.iter_time == 160: # Change to 300 for CIFAR100 training
             model_filename = generate_filename(model_name, 1)
             torch.save(self.net, model_filename)
             self.max = acc
@@ -196,7 +198,7 @@ class NN_SGDTrainer(object):
     def net_test(self):
         criterion = nn.CrossEntropyLoss()
         def test(info):
-            self.net.eval()  # trun to eval mode
+            self.net.eval()  # turn to eval mode
             correct_sum = 0
             total_loss_sum = 0.
             total_ctr = 0
