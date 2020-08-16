@@ -15,7 +15,7 @@ import numpy as np
 os.environ["CUDA_VISIBLE_DEVICES"] = sys.argv[2]
 
 saved_model_path = sys.argv[1]
-eps = int(sys.argv[4]) / 255 # The specified attack radius
+eps_ = int(sys.argv[4]) / 255 # The specified attack radius
 
 net = torch.load(saved_model_path)
 net.cuda()
@@ -50,13 +50,23 @@ for inputs, labels in now_dataloader:
     if torch.cuda.is_available():
         inputs, labels = inputs.cuda(), labels.cuda()
 
+    """
+        The somewhat odd scaling on eps and torch.clamp is due to the normalization operation over dataset (Line #36).
+        We provide the codes as an alternative way to calculate equivalent robustness scores with those who have normalized the dataset when training; a common approach is not to use Line #36 (and thus no need to scale eps and torch.clamp).
+    """
+    eps = torch.ones_like(inputs) * eps_
+    eps = torch.stack((eps[:,0,:,:] / 0.2023, eps[:,1,:,:] / 0.1994, eps[:,2,:,:] / 0.2010), dim=1).cuda()
+
     outputs = net(inputs)
     loss = criterion(outputs, labels)
     net.zero_grad()
     inputs_grad = torch.autograd.grad(loss, inputs)[0]
 
     inputs.data = inputs.data + (eps * inputs_grad.data.sign())
-    inputs = inputs.clamp(min=0, max=1)
+    inputs = torch.stack((torch.clamp(inputs[:,0,:,:], min=(0-0.4914)/0.2023, max=(1-0.4914)/0.2023),
+                          torch.clamp(inputs[:,1,:,:], min=(0-0.4822)/0.1994, max=(1-0.4822)/0.1994),
+                          torch.clamp(inputs[:,2,:,:], min=(0-0.4465)/0.2010, max=(1-0.4465)/0.2010)), dim=1)
+    #inputs = inputs.clamp(min=0, max=1)
 
     outputs2 = net(inputs)
 

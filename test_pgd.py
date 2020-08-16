@@ -19,7 +19,7 @@ Comments on CIFAR-100 training are the same with those in the FGSM attack file.
 '''
 
 saved_model_path = sys.argv[1]
-eps = int(sys.argv[4]) / 255
+eps_ = int(sys.argv[4]) / 255
 
 net = torch.load(saved_model_path)
 net.cuda()
@@ -40,7 +40,7 @@ transform_test = transforms.Compose([
     transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010))
 ])
 testset = torchvision.datasets.CIFAR10( # Change this to CIFAR100 if conducting FGSM attack on CIFAR-100
-    root="./data", download=True, train=False, transform=transform_test
+    root="../data", download=True, train=False, transform=transform_test
 )
 now_dataloader = torch.utils.data.DataLoader(
     testset, batch_size=250, shuffle=False, num_workers=2
@@ -50,7 +50,7 @@ correct_sum = 0
 total_ctr = 0
 
 M = 20
-alpha = 2 / 255
+alpha_ = 1 / 255
 
 def where(cond, x, y):
     """
@@ -65,8 +65,16 @@ for inputs, labels in now_dataloader:
     if torch.cuda.is_available():
         inputs, labels = inputs.cuda(), labels.cuda()
 
-    inputs += torch.Tensor(inputs.shape).uniform_(-eps, eps).to("cuda")
+#    inputs += torch.Tensor(inputs.shape).uniform_(-eps_, eps_).to("cuda")
+    inputs += torch.stack((torch.Tensor(size=(inputs.shape[0], inputs.shape[2], inputs.shape[3])).uniform_(-eps_ / 0.2023, eps_ / 0.2023), 
+                           torch.Tensor(size=(inputs.shape[0], inputs.shape[2], inputs.shape[3])).uniform_(-eps_ / 0.1994, eps_ / 0.1994), 
+                           torch.Tensor(size=(inputs.shape[0], inputs.shape[2], inputs.shape[3])).uniform_(-eps_ / 0.2010, eps_ / 0.2010)), dim=1).cuda()    
+    
     cp_inputs = inputs.clone().detach()
+
+    eps = torch.ones_like(inputs) * eps_
+    eps = torch.stack((eps[:,0,:,:] / 0.2023, eps[:,1,:,:] / 0.1994, eps[:,2,:,:] / 0.2010), dim=1).cuda()
+    alpha = (eps / eps_ * alpha_).cuda()
 
     for i in range(M):
         outputs = net(inputs)
@@ -76,7 +84,10 @@ for inputs, labels in now_dataloader:
         inputs.data = inputs.data + (alpha * inputs_grad.data.sign())
         inputs = where(inputs > cp_inputs + eps, cp_inputs + eps, inputs)
         inputs = where(inputs < cp_inputs - eps, cp_inputs - eps, inputs)        
-        inputs = inputs.clamp(min=0, max=1)
+        inputs = torch.stack((torch.clamp(inputs[:,0,:,:], min=(0-0.4914)/0.2023, max=(1-0.4914)/0.2023),
+                              torch.clamp(inputs[:,1,:,:], min=(0-0.4822)/0.1994, max=(1-0.4822)/0.1994),
+                              torch.clamp(inputs[:,2,:,:], min=(0-0.4465)/0.2010, max=(1-0.4465)/0.2010)), dim=1)
+        #inputs = inputs.clamp(min=0, max=1)
 
     outputs2 = net(inputs)
 
